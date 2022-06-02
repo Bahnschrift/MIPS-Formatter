@@ -39,6 +39,7 @@ def mipsy_check(f: Path) -> bool:
         return not bool(checker.returncode)
 
     # 1521 mipsy not found. Ask to continue
+    assert checker.returncode == 127
     print("Could not find mipsy. Continuing without valid code could result in code loss.")
     print("Continue anyway? (y/n)", end=" ")
     if input() != "y":
