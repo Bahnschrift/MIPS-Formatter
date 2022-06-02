@@ -158,8 +158,6 @@ class Formatter:
                 # TODO: This needs more work to better format terms following directives
                 elif term.startswith("."):
                     directive = Directive(term[1:])
-                    print("Beginning directive:", directive)
-                    # self.tokens.append(directive)
 
                 # Operators
                 elif instruction is None and directive is None:
@@ -173,7 +171,6 @@ class Formatter:
                     if instruction:
                         instruction.add_operand(term)
                     elif directive:
-                        print("Adding param to directive:", directive)
                         directive.add_param(term)
                     if instruction and directive:
                         print(f"Error: In both directive {directive} and instruction {instruction}")
