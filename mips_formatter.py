@@ -39,8 +39,8 @@ def mipsy_check(f: Path) -> bool:
         return not bool(checker.returncode)
 
     # 1521 mipsy not found. Ask to continue
-    print("Could not find mipsy. Continuing without valid code result in code loss.")
-    print("Continue? (y/n)", end=" ")
+    print("Could not find mipsy. Continuing without valid code could result in code loss.")
+    print("Continue anyway? (y/n)", end=" ")
     if input() != "y":
         print("Aborting...")
         exit(1)
@@ -96,8 +96,7 @@ if __name__ == "__main__":
 
     if input_str_len != output_str_len:
         print("Formatted code does not have same length as original. Possible code loss.")
-        print(f"Original length: {input_str_len}. Formatted length: {output_str_len}")
-        print("Continue? (y/n)", end=" ")
+        print("Continue anyway? (y/n)", end=" ")
         if input() != "y":
             print("Aborting...")
             exit(1)
