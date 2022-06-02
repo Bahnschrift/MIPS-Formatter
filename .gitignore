@@ -1,0 +1,4 @@
+*.code-workspace
+.vscode/
+__pycache__/
+tests/

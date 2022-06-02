@@ -1,92 +1,6 @@
-#!/usr/bin/python3
-
-###############################################################################
-# MIPS Assembly Lanuage Formatter                                             #
-#                                                                             #
-# I bear absolutely no responsibility for any mental damage that occurs as a  #
-# result of trying to read the abhorrent mess of spaghetti that is this code. #
-#                                                                             #
-# It might also be a good idea to output to a specific file instead of        #
-# overwriting the original, since I probably coded this in an awful way that  #
-# could result in code loss and / or breaking functionality.                  #
-#                                                                             #
-# If you find any bugs, let my know and if I can bear to try and understand   #
-# the code I wrote here enough to fix it, I will.                             #
-###############################################################################
-
-# TODO: Refactor everything
-
-import argparse
 from math import ceil
-
-# So the basic idea of this is that the input code is parsed character by character and divided up into a list of
-# 'terms', which are then grouped into 'tokens'.
-# A token is either a Label, a Directive, a Instruction, Comment, or NewLine.
-# Tokens implement the .__str__() method to return exactly how they should be formatted in the output.
-# For example, instructions should always be indented once (https://jashankj.space/notes/cse-comp1521-better-assembly/),
-# so the .__str__() method of Instructions always prepends a tab character.
-#
-# This 'Token' class is pretty much just for typing.
-class Token:
-    def __init__(self):
-        pass
-
-
-# Labels are terms that end with a colon.
-class Label(Token):
-    def __init__(self, label):
-        self.label: str = label
-
-    def __str__(self):
-        return f"{self.label}:"
-
-
-# Instructions consist of an 'operator' and a list of operands.
-class Instruction(Token):
-    def __init__(self, operator: str):
-        self.operator: str = operator
-        self.operands: list[str] = []
-
-    def __str__(self):
-        if len(self.operands) == 0:
-            return f"\t{self.operator}"
-
-        return f"\t{self.operator}\t{', '.join(self.operands)}"
-
-    def add_operand(self, operand: str):
-        self.operands.append(operand)
-
-
-# Comments begin with a '#' and are terminated by a newline.
-class Comment(Token):
-    def __init__(self):
-        self.comment: str = ""
-        self.indentation: int = 0
-
-    def __str__(self):
-        return "\t" * self.indentation + f"#{self.comment}"
-
-    def add_char(self, char: str):
-        self.comment += char
-
-
-# Directives are terms that begin with a '.'.
-class Directive(Token):
-    def __init__(self, section_name: str):
-        self.name: str = section_name
-        self.params: list[str] = []
-
-    def __str__(self):
-        return f"\t.{self.name}\t{' '.join(self.params)}"
-
-    def add_param(self, param: str):
-        self.params.append(param)
-
-
-# Just a newline.
-class NewLine(Token):
-    def __str__(self):
-        return "\n"
+from multiprocessing.sharedctypes import Value
+from tokens import *
 
 
 # A block is a list of tokens.
@@ -177,6 +91,11 @@ class Formatter:
                     self.tokens.append(instruction)
                     instruction = None
 
+                if directive is not None:
+                    block.add_token(directive)
+                    self.tokens.append(directive)
+                    directive = None
+
                 comment, i = self.get_comment(i + 1)
                 if started:
                     block.add_token(comment)
@@ -184,13 +103,22 @@ class Formatter:
 
             # NewLine
             elif self.input_str[i] == "\n":
+                i += 1
+
                 # NewLines also mean the end of Instructions
                 if instruction is not None:
                     block.add_token(instruction)
                     self.tokens.append(instruction)
                     instruction = None
 
-                i += 1
+                if directive is not None:
+                    if directive.params:
+                        block.add_token(directive)
+                        self.tokens.append(directive)
+                        directive = None
+                    else:
+                        directive.has_newline = True
+                    continue
 
                 # Only have a single newline after a label. Come to think of it, this would break if there were a
                 # comment on the same line as the label.
@@ -230,17 +158,26 @@ class Formatter:
                 # TODO: This needs more work to better format terms following directives
                 elif term.startswith("."):
                     directive = Directive(term[1:])
-                    self.tokens.append(directive)
+                    print("Beginning directive:", directive)
+                    # self.tokens.append(directive)
 
                 # Operators
-                elif instruction is None:
+                elif instruction is None and directive is None:
                     instruction = Instruction(term)
 
                 # Operands
                 else:
-                    if term.endswith(","):
+                    if term.endswith(",") and instruction:
                         term = term[:-1]
-                    instruction.add_operand(term)
+
+                    if instruction:
+                        instruction.add_operand(term)
+                    elif directive:
+                        print("Adding param to directive:", directive)
+                        directive.add_param(term)
+                    if instruction and directive:
+                        print(f"Error: In both directive {directive} and instruction {instruction}")
+                        raise ValueError
 
             else:
                 # This should be impossible to reach. I think this is just from earlier, but I'm going to leave it in.
@@ -280,45 +217,3 @@ class Formatter:
                 i += 1
 
         return term, i
-
-
-if __name__ == "__main__":
-    argparser = argparse.ArgumentParser(description="Format a .s (MIPS assembly language) file")
-    argparser.add_argument("input", type=argparse.FileType("r+"), help="Input .s file")
-    argparser.add_argument(
-        "-o",
-        "--output",
-        type=argparse.FileType("w+"),
-        help="Output .s file. If not specified then input will be overwritten",
-    )
-    argparser.add_argument(
-        "-t",
-        "--tab-width",
-        type=int,
-        default=8,
-        help="Number of spaces to use for a tab. Default: 8",
-    )
-    args = argparser.parse_args()
-
-    input_str = args.input.read()
-    formatter = Formatter(input_str, tab_width=args.tab_width)
-
-    # TODO: Run "mipsy --check [file]" before formatting to make sure the input is actual valid MIPS code
-
-    try:
-        formatted = formatter.format()
-    except Exception as e:
-        # I don't know what could go wrong here, but it's probably quite a lot.
-        # If something does, try not to delete all the original code.
-        print("Error. Sorry...")
-        formatted = input_str
-
-    if args.output is not None:
-        args.output.write(formatted)
-        args.output.close()
-    else:
-        args.input.seek(0)
-        args.input.write(formatted)
-        args.input.truncate()
-
-    args.input.close()
