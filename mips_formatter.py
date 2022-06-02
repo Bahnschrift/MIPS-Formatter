@@ -17,6 +17,8 @@
 # TODO: Refactor everything
 
 import argparse
+import subprocess
+from pathlib import Path
 from formatter import Formatter
 
 
@@ -26,13 +28,35 @@ def get_num_not_space(s: str) -> int:
     return len(list(filter(lambda c: not c.isspace(), s)))
 
 
+# Calls "mipsy --check <file>" on the current file
+def mipsy_check(f: Path) -> bool:
+    checker = subprocess.run(f"mipsy --check {f}", shell=True, capture_output=True)
+    if checker.returncode <= 1:
+        return not bool(checker.returncode)
+
+    # mipsy not found. Try 1521 mipsy
+    assert checker.returncode == 127
+    checker = subprocess.run(f"1521 mipsy --check {f}", shell=True, capture_output=True)
+    if checker.returncode <= 1:
+        return not bool(checker.returncode)
+
+    # 1521 mipsy not found. Ask to continue
+    print("Could not find mipsy. Continuing without valid code result in code loss.")
+    print("Continue? (y/n)", end=" ")
+    if input() != "y":
+        print("Aborting...")
+        exit(1)
+
+    return True
+
+
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Format a .s (MIPS assembly language) file")
-    argparser.add_argument("input", type=argparse.FileType("r+"), help="Input .s file")
+    argparser.add_argument("input", type=str, help="Input .s file")
     argparser.add_argument(
         "-o",
         "--output",
-        type=argparse.FileType("w+"),
+        type=str,
         help="Output .s file. If not specified then input will be overwritten",
     )
     argparser.add_argument(
@@ -42,20 +66,32 @@ if __name__ == "__main__":
         default=8,
         help="Number of spaces to use for a tab. Default: 8",
     )
+
     args = argparser.parse_args()
+    input_fpath: Path = Path(args.input)
+    output_fpath: Path = Path(args.output) if args.output is not None else input_fpath
 
-    input_str = args.input.read()
+    if not input_fpath.exists():
+        print(f"Error: {input_fpath} does not exist")
+        exit(1)
+
+    valid_code = mipsy_check(input_fpath)
+    if not valid_code:
+        print("Invalid MIPS Assembly code detected by 'mipsy --check'")
+        print("Aborting...")
+        exit(1)
+
+    with open(input_fpath) as input_file:
+        input_str = input_file.read()
     formatter = Formatter(input_str, tab_width=args.tab_width)
-
-    # TODO: Run "mipsy --check [file]" before formatting to make sure the input is actual valid MIPS code
 
     try:
         output_str = formatter.format()
     except Exception as e:
         # I don't know what could go wrong here, but it's probably quite a lot.
         # If something does, try not to delete all the original code.
-        print("Error. Sorry...")
-        output_str = input_str
+        print(f"Unknown error: {e}")
+        exit(1)
 
     input_str_len = get_num_not_space(input_str)
     output_str_len = get_num_not_space(output_str)
@@ -66,14 +102,9 @@ if __name__ == "__main__":
         print("Continue? (y/n)", end=" ")
         if input() != "y":
             print("Aborting...")
-            output_str = input_str
+            exit(1)
 
-    if args.output is not None:
-        args.output.write(output_str)
-        args.output.close()
-    else:
-        args.input.seek(0)
-        args.input.write(output_str)
-        args.input.truncate()
+    with open(output_fpath, "w") as output_file:
+        output_file.write(output_str)
 
-    args.input.close()
+    print(f"Successfully formatted {input_fpath} to {output_fpath}")
