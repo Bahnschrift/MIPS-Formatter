@@ -149,6 +149,12 @@ class Formatter:
 
                 # Labels
                 if term.endswith(":"):
+                    if directive is not None:
+                        block.add_token(directive)
+                        self.tokens.append(directive)
+                        self.tokens.append(NewLine())
+                        directive = None
+
                     block.align_comments()
                     block = Block(self.tab_width)
                     self.tokens.append(Label(term[:-1]))

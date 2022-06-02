@@ -57,7 +57,9 @@ class Directive(Token):
         self.has_newline = False
 
     def __str__(self):
-        if self.has_newline:
+        if len(self.params) == 0:
+            return f"\t.{self.name}"
+        elif self.has_newline:
             return f"\t.{self.name}\n\t\t{' '.join(self.params)}"
         else:
             return f"\t.{self.name}\t{' '.join(self.params)}"
