@@ -20,6 +20,12 @@ import argparse
 from formatter import Formatter
 
 
+# Returns the number of non-whitespace characters in a string
+# This is used to (poorly)check for code loss after formatting
+def get_num_not_space(s: str) -> int:
+    return len(list(filter(lambda c: not c.isspace(), s)))
+
+
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Format a .s (MIPS assembly language) file")
     argparser.add_argument("input", type=argparse.FileType("r+"), help="Input .s file")
@@ -44,19 +50,30 @@ if __name__ == "__main__":
     # TODO: Run "mipsy --check [file]" before formatting to make sure the input is actual valid MIPS code
 
     try:
-        formatted = formatter.format()
+        output_str = formatter.format()
     except Exception as e:
         # I don't know what could go wrong here, but it's probably quite a lot.
         # If something does, try not to delete all the original code.
         print("Error. Sorry...")
-        formatted = input_str
+        output_str = input_str
+
+    input_str_len = get_num_not_space(input_str)
+    output_str_len = get_num_not_space(output_str)
+
+    if input_str_len != output_str_len:
+        print("Formatted code does not have same length as original. Possible code loss.")
+        print(f"Original length: {input_str_len}. Formatted length: {output_str_len}")
+        print("Continue? (y/n)", end=" ")
+        if input() != "y":
+            print("Aborting...")
+            output_str = input_str
 
     if args.output is not None:
-        args.output.write(formatted)
+        args.output.write(output_str)
         args.output.close()
     else:
         args.input.seek(0)
-        args.input.write(formatted)
+        args.input.write(output_str)
         args.input.truncate()
 
     args.input.close()
