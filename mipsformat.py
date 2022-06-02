@@ -18,7 +18,6 @@
 
 import argparse
 from math import ceil
-from typing import Type
 
 # So the basic idea of this is that the input code is parsed character by character and divided up into a list of
 # 'terms', which are then grouped into 'tokens'.
