@@ -14,8 +14,6 @@
 # the code I wrote here enough to fix it, I will.                             #
 ###############################################################################
 
-# TODO: Refactor everything
-
 import argparse
 import subprocess
 from pathlib import Path
