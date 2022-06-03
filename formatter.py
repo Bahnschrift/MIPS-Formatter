@@ -25,7 +25,7 @@ class Block:
                     # I think this formula is wrong
                     # TODO: Fix
                     token.indentation = ceil((comment_col - instruction_length) / self.tab_width)
-                else:
+                elif not token.dont_indent:
                     token.indentation = 1
 
         # Do not any comments at the end of a block, since they are like in actuality descriptions of the next block
@@ -193,6 +193,9 @@ class Formatter:
     # Returns the Comment object and the index of the character after the comment
     def get_comment(self, i: int):
         comment = Comment()
+        if i >= 2 and self.input_str[i - 2] == "\n":
+            comment.dont_indent = True
+
         while self.input_str[i] != "\n":
             comment.add_char(self.input_str[i])
             i += 1

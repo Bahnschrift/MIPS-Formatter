@@ -41,6 +41,7 @@ class Comment(Token):
     def __init__(self):
         self.comment: str = ""
         self.indentation: int = 0
+        self.dont_indent: bool = False  # Respect 0 indentation for comments where defined by the user
 
     def __str__(self):
         return "\t" * self.indentation + f"#{self.comment}"
