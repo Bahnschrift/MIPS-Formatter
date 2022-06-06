@@ -27,15 +27,20 @@ def get_num_not_space(s: str) -> int:
 
 
 # Calls "mipsy --check <file>" on the current file
+# This is bad I should probably change this
 def mipsy_check(f: Path) -> bool:
-    checker = subprocess.run(f"mipsy --check {f}", shell=True, capture_output=True)
+    checker = subprocess.run(f"mipsy --check {f}", shell=True, stderr=subprocess.PIPE)
     if checker.returncode <= 1:
+        if checker.returncode == 1:
+            print(checker.stderr.decode("utf-8"))
         return not bool(checker.returncode)
 
     # mipsy not found. Try 1521 mipsy
     assert checker.returncode == 127
-    checker = subprocess.run(f"1521 mipsy --check {f}", shell=True, capture_output=True)
+    checker = subprocess.run(f"1521 mipsy --check {f}", shell=True, stderr=subprocess.PIPE)
     if checker.returncode <= 1:
+        if checker.returncode == 1:
+            print(checker.stderr.decode("utf-8"))
         return not bool(checker.returncode)
 
     # 1521 mipsy not found. Ask to continue
